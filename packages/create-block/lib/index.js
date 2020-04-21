@@ -31,7 +31,22 @@ program
 		'template type name, allowed values: "es5", "esnext"',
 		'esnext'
 	)
-	.action( async ( slug, { template } ) => {
+	.option(
+		'--namespace <namespace>',
+		'internal namespace for the block name'
+	)
+	.option( '--title <title>', 'display title for the block' )
+	.option( '--category <category>', 'category name for the block' )
+	.action( async ( slug, commandObject ) => {
+		const { template } = commandObject;
+		const optionsProvided = [ 'namespace', 'title', 'category' ]
+			.filter( ( optionName ) => commandObject[ optionName ] )
+			.reduce( ( accumulator, optionName ) => {
+				accumulator[ optionName ] = commandObject[ optionName ];
+				return accumulator;
+			}, {} );
+
+		console.log( optionsProvided );
 		await checkSystemRequirements( engines );
 		try {
 			const defaultValues = getDefaultValues( template );
@@ -39,12 +54,13 @@ program
 				const answers = {
 					...defaultValues,
 					slug,
-					// Transforms slug to title.
+					// Transforms slug to title as a fallback.
 					title: startCase( slug ),
 				};
 				await scaffold( template, answers );
 			} else {
-				const answers = await inquirer.prompt( getPrompts( template ) );
+				const propmpts = getPrompts( template );
+				const answers = await inquirer.prompt( propmpts );
 				await scaffold( template, {
 					...defaultValues,
 					...answers,
