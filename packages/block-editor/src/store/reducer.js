@@ -16,11 +16,13 @@ import {
 	identity,
 	difference,
 	omitBy,
+	pickBy,
 } from 'lodash';
 
 /**
  * WordPress dependencies
  */
+import isShallowEqual from '@wordpress/is-shallow-equal';
 import { combineReducers } from '@wordpress/data';
 import { isReusableBlock } from '@wordpress/blocks';
 /**
@@ -408,7 +410,7 @@ function withPersistentBlockChange( reducer ) {
 				: ! isUpdatingSameBlockAttribute( action, lastAction ),
 		};
 
-		// @noahtallen
+		// @noahtallen why was this needed in the original PR?
 		// if ( action.rootClientId ) {
 		// 	nextState.persistentChangeRootClientId = action.rootClientId;
 		// }
@@ -532,8 +534,18 @@ const withBlockReset = ( reducer ) => ( state, action ) => {
 				...mapBlockParents( action.blocks ),
 			},
 			cache: {
-				...omit( state.cache, visibleClientIds ),
-				...mapValues( flattenBlocks( action.blocks ), () => ( {} ) ),
+				...omit( state.cache, visibleClientIds ), // @todo @noahtallen: does this need removed?
+				...mapValues(
+					pickBy(
+						flattenBlocks( action.blocks ),
+						( block ) =>
+							! isShallowEqual( block, {
+								...state.byClientId[ block.clientId ],
+								attributes: state.attributes[ block.clientId ],
+							} )
+					),
+					() => ( {} )
+				),
 			},
 		};
 	}
