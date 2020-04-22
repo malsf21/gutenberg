@@ -80,9 +80,7 @@ class InnerBlocks extends Component {
 			block,
 			templateLock,
 			__experimentalBlocks,
-			replaceInnerBlocks,
-			__unstableMarkNextChangeAsNotPersistent,
-			controlInnerBlocks,
+			initializeControlledInnerBlocks,
 		} = this.props;
 		const { innerBlocks } = block;
 		// Only synchronize innerBlocks with template if innerBlocks are empty or a locking all exists directly on the block.
@@ -98,9 +96,7 @@ class InnerBlocks extends Component {
 
 		// Set controlled blocks value from parent, if any.
 		if ( __experimentalBlocks ) {
-			controlInnerBlocks();
-			__unstableMarkNextChangeAsNotPersistent();
-			replaceInnerBlocks( __experimentalBlocks, false );
+			initializeControlledInnerBlocks( __experimentalBlocks, false );
 		}
 	}
 
@@ -127,8 +123,19 @@ class InnerBlocks extends Component {
 			}
 		}
 
-		// Sync with controlled blocks value from parent, if possible.
-		if ( prevProps.block.innerBlocks !== innerBlocks ) {
+		/**
+		 * Sync with controlled blocks value from parent, if possible. Note that
+		 * there is a scenario where the innerBlocks reference changes at one
+		 * execution of componentDidUpdate, but the block persistence value
+		 * changes on the next execution. This means it will not attempt to
+		 * persist the change. To mitigate this, also call the resetFunc if the
+		 * block persistence state changes.
+		 */
+		if (
+			prevProps.block.innerBlocks !== innerBlocks ||
+			( ! prevProps.isLastBlockChangePersistent &&
+				isLastBlockChangePersistent )
+		) {
 			const resetFunc = isLastBlockChangePersistent ? onChange : onInput;
 			if ( resetFunc ) {
 				resetFunc( innerBlocks );
@@ -279,24 +286,27 @@ const ComposedInnerBlocks = compose( [
 			templateInsertUpdatesSelection = true,
 		} = ownProps;
 
+		const wrappedReplaceBlocks = ( blocks, forceUpdateSelection ) => {
+			replaceInnerBlocks(
+				clientId,
+				blocks,
+				forceUpdateSelection !== undefined
+					? forceUpdateSelection
+					: block.innerBlocks.length === 0 &&
+							templateInsertUpdatesSelection &&
+							blocks.length !== 0
+			);
+		};
+
 		return {
-			replaceInnerBlocks( blocks, forceUpdateSelection ) {
-				replaceInnerBlocks(
-					clientId,
-					blocks,
-					forceUpdateSelection !== undefined
-						? forceUpdateSelection
-						: block.innerBlocks.length === 0 &&
-								templateInsertUpdatesSelection &&
-								blocks.length !== 0
-				);
-			},
-			__unstableMarkNextChangeAsNotPersistent,
+			replaceInnerBlocks: wrappedReplaceBlocks,
 			updateNestedSettings( settings ) {
 				dispatch( updateBlockListSettings( clientId, settings ) );
 			},
-			controlInnerBlocks( isController = true ) {
-				setHasControlledInnerBlocks( clientId, isController );
+			initializeControlledInnerBlocks( blocks ) {
+				setHasControlledInnerBlocks( clientId, true );
+				__unstableMarkNextChangeAsNotPersistent();
+				wrappedReplaceBlocks( blocks, false );
 			},
 		};
 	} ),
