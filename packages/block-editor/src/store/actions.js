@@ -111,7 +111,11 @@ export function receiveBlocks( blocks ) {
  *
  * @return {Object} Action object.
  */
-export function updateBlockAttributes( clientId, attributes, rootClientId ) {
+export function updateBlockAttributes(
+	clientId,
+	attributes,
+	rootClientId = null
+) {
 	return {
 		type: 'UPDATE_BLOCK_ATTRIBUTES',
 		clientId,
@@ -339,7 +343,7 @@ export function* replaceBlocks(
 		blocks,
 		time: Date.now(),
 		indexToSelect,
-		rootClientId: isLocalChange ? rootClientId : undefined,
+		rootClientId: isLocalChange ? rootClientId : null,
 	};
 	yield* ensureDefaultBlock();
 }

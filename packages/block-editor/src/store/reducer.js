@@ -371,12 +371,20 @@ const withBlockCache = ( reducer ) => ( state = {}, action ) => {
  * @return {Function} Enhanced reducer function.
  */
 function withPersistentBlockChange( reducer ) {
-	let lastAction;
+	let lastAction, latestRootClientId;
 	let markNextChangeAsNotPersistent = false;
 
 	return ( state, action ) => {
 		let nextState = reducer( state, action );
-		nextState.persistentChangeRootClientId = action.rootClientId;
+
+		// Only clear the clientID if we specifically did NOT set it.
+		if ( action.rootClientId === null ) {
+			latestRootClientId = undefined;
+		} else if ( action.rootClientId ) {
+			latestRootClientId = action.rootClientId;
+		}
+
+		nextState.persistentChangeRootClientId = latestRootClientId;
 
 		const isExplicitPersistentChange =
 			action.type === 'MARK_LAST_CHANGE_AS_PERSISTENT' ||
@@ -400,20 +408,23 @@ function withPersistentBlockChange( reducer ) {
 			return {
 				...nextState,
 				isPersistentChange: nextIsPersistentChange,
+				persistentChangeRootClientId: nextIsPersistentChange
+					? latestRootClientId
+					: undefined,
 			};
 		}
 
+		const markIsPersistant = isExplicitPersistentChange
+			? ! markNextChangeAsNotPersistent
+			: ! isUpdatingSameBlockAttribute( action, lastAction );
+
 		nextState = {
 			...nextState,
-			isPersistentChange: isExplicitPersistentChange
-				? ! markNextChangeAsNotPersistent
-				: ! isUpdatingSameBlockAttribute( action, lastAction ),
+			isPersistentChange: markIsPersistant,
+			persistentChangeRootClientId: markIsPersistant
+				? latestRootClientId
+				: undefined,
 		};
-
-		// @noahtallen why was this needed in the original PR?
-		// if ( action.rootClientId ) {
-		// 	nextState.persistentChangeRootClientId = action.rootClientId;
-		// }
 
 		// In comparing against the previous action, consider only those which
 		// would have qualified as one which would have been ignored or not
