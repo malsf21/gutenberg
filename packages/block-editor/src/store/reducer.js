@@ -371,7 +371,7 @@ const withBlockCache = ( reducer ) => ( state = {}, action ) => {
  * @return {Function} Enhanced reducer function.
  */
 function withPersistentBlockChange( reducer ) {
-	let lastAction, latestRootClientId;
+	let lastAction, latestPersistenceRootClientId;
 	let markNextChangeAsNotPersistent = false;
 
 	return ( state, action ) => {
@@ -379,12 +379,25 @@ function withPersistentBlockChange( reducer ) {
 
 		// Only clear the clientID if we specifically did NOT set it.
 		if ( action.rootClientId === null ) {
-			latestRootClientId = undefined;
-		} else if ( action.rootClientId ) {
-			latestRootClientId = action.rootClientId;
+			latestPersistenceRootClientId = undefined;
+		} else if (
+			action.rootClientId &&
+			nextState.controlledInnerBlocks[ action.rootClientId ]
+		) {
+			/**
+			 * Only set a rootClientId as a "persistence root" if it is actually
+			 * controlling its own blocks. Without this check, any block action
+			 * which sets a rootClient ID will change the persistence root. For
+			 * example, inserting a block into a Column will include the rootClientId
+			 * of the Column block. This would change the persistence root to the
+			 * Column, even though the Column is not controlling its InnerBlocks.
+			 *
+			 * In practice, this would cause bugs with persistence state, since
+			 * entities will not detect persistent changes if the persistence
+			 * root is set to the incorrect block.
+			 */
+			latestPersistenceRootClientId = action.rootClientId;
 		}
-
-		nextState.persistentChangeRootClientId = latestRootClientId;
 
 		const isExplicitPersistentChange =
 			action.type === 'MARK_LAST_CHANGE_AS_PERSISTENT' ||
@@ -409,7 +422,7 @@ function withPersistentBlockChange( reducer ) {
 				...nextState,
 				isPersistentChange: nextIsPersistentChange,
 				persistentChangeRootClientId: nextIsPersistentChange
-					? latestRootClientId
+					? latestPersistenceRootClientId
 					: undefined,
 			};
 		}
@@ -422,7 +435,7 @@ function withPersistentBlockChange( reducer ) {
 			...nextState,
 			isPersistentChange: markIsPersistant,
 			persistentChangeRootClientId: markIsPersistant
-				? latestRootClientId
+				? latestPersistenceRootClientId
 				: undefined,
 		};
 

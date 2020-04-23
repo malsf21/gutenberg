@@ -1542,10 +1542,19 @@ export function getSettings( state ) {
  * @return {boolean} Whether the most recent block change was persistent.
  */
 export function isLastBlockChangePersistent( state, rootClientId ) {
+	// If a rootClientId is given, only return state for changes which are
+	// related to that specific clientId.
+	if ( rootClientId ) {
+		return (
+			state.blocks.persistentChangeRootClientId &&
+			state.blocks.persistentChangeRootClientId === rootClientId
+		);
+	}
+	// If no rootClientId is given, only return the state for changes which are
+	// not attached to any clientId.
 	return (
 		state.blocks.isPersistentChange &&
-		( ! state.blocks.persistentChangeRootClientId ||
-			state.blocks.persistentChangeRootClientId === rootClientId )
+		! state.blocks.persistentChangeRootClientId
 	);
 }
 
