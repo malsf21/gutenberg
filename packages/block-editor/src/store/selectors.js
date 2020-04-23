@@ -1702,6 +1702,10 @@ export function areInnerBlocksControlled( state, clientId ) {
  *                   if the given block is not a child of an InnerBlock controller.
  */
 export function getInnerBlockController( state, clientId ) {
+	// Quick check of the current block before traversing the block tree.
+	if ( areInnerBlocksControlled( state, clientId ) ) {
+		return clientId;
+	}
 	let rootClientId = clientId;
 	// Continue up the block true, stopping if we find an InnerBlock Controller.
 	while ( ( rootClientId = getBlockRootClientId( state, rootClientId ) ) ) {

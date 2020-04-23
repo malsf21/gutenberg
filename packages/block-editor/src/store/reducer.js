@@ -30,6 +30,7 @@ import { isReusableBlock } from '@wordpress/blocks';
  */
 import { PREFERENCES_DEFAULTS, SETTINGS_DEFAULTS } from './defaults';
 import { insertAt, moveTo } from './array';
+import { getInnerBlockController } from './selectors';
 
 /**
  * Given an array of blocks, returns an object where each key is a nesting
@@ -371,33 +372,11 @@ const withBlockCache = ( reducer ) => ( state = {}, action ) => {
  * @return {Function} Enhanced reducer function.
  */
 function withPersistentBlockChange( reducer ) {
-	let lastAction, latestPersistenceRootClientId;
+	let lastAction;
 	let markNextChangeAsNotPersistent = false;
 
 	return ( state, action ) => {
 		let nextState = reducer( state, action );
-
-		// Only clear the clientID if we specifically did NOT set it.
-		if ( action.rootClientId === null ) {
-			latestPersistenceRootClientId = undefined;
-		} else if (
-			action.rootClientId &&
-			nextState.controlledInnerBlocks[ action.rootClientId ]
-		) {
-			/**
-			 * Only set a rootClientId as a "persistence root" if it is actually
-			 * controlling its own blocks. Without this check, any block action
-			 * which sets a rootClient ID will change the persistence root. For
-			 * example, inserting a block into a Column will include the rootClientId
-			 * of the Column block. This would change the persistence root to the
-			 * Column, even though the Column is not controlling its InnerBlocks.
-			 *
-			 * In practice, this would cause bugs with persistence state, since
-			 * entities will not detect persistent changes if the persistence
-			 * root is set to the incorrect block.
-			 */
-			latestPersistenceRootClientId = action.rootClientId;
-		}
 
 		const isExplicitPersistentChange =
 			action.type === 'MARK_LAST_CHANGE_AS_PERSISTENT' ||
@@ -418,26 +397,37 @@ function withPersistentBlockChange( reducer ) {
 				return state;
 			}
 
-			return {
+			nextState = {
 				...nextState,
 				isPersistentChange: nextIsPersistentChange,
-				persistentChangeRootClientId: nextIsPersistentChange
-					? latestPersistenceRootClientId
-					: undefined,
+			};
+		} else {
+			nextState = {
+				...nextState,
+				isPersistentChange: isExplicitPersistentChange
+					? ! markNextChangeAsNotPersistent
+					: ! isUpdatingSameBlockAttribute( action, lastAction ),
 			};
 		}
 
-		const markIsPersistant = isExplicitPersistentChange
-			? ! markNextChangeAsNotPersistent
-			: ! isUpdatingSameBlockAttribute( action, lastAction );
-
-		nextState = {
-			...nextState,
-			isPersistentChange: markIsPersistant,
-			persistentChangeRootClientId: markIsPersistant
-				? latestPersistenceRootClientId
-				: undefined,
-		};
+		/**
+		 * Determine the closest rootClientId of a change if the action includes
+		 * a rootClientId.
+		 *
+		 * @todo @noahtallen should we change this to check the clientId first?
+		 * If so, we could remove the rootClient logic on an action-level.
+		 */
+		if ( nextState.isPersistentChange && action.rootClientId ) {
+			const clientId = action.rootClientId;
+			const rootController = getInnerBlockController(
+				{ blocks: nextState },
+				clientId
+			);
+			// If no rootController is found, it will be set to undefined, which is expected.
+			nextState.persistentChangeRootClientId = rootController;
+		} else {
+			nextState.persistentChangeRootClientId = undefined;
+		}
 
 		// In comparing against the previous action, consider only those which
 		// would have qualified as one which would have been ignored or not
