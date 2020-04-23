@@ -308,10 +308,6 @@ _Returns_
 
 -   `?string`: Client ID of block selection start.
 
-<a name="getBlockWithoutControlledInnerBlocks" href="#getBlockWithoutControlledInnerBlocks">#</a> **getBlockWithoutControlledInnerBlocks**
-
-Undocumented declaration.
-
 <a name="getClientIdsOfDescendants" href="#getClientIdsOfDescendants">#</a> **getClientIdsOfDescendants**
 
 Returns an array containing the clientIds of all descendants

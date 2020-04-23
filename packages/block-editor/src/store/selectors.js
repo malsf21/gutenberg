@@ -168,28 +168,6 @@ export const getBlock = createSelector(
 	]
 );
 
-export const getBlockWithoutControlledInnerBlocks = createSelector(
-	( state, clientId ) => {
-		const block = state.blocks.byClientId[ clientId ];
-		if ( ! block ) {
-			return null;
-		}
-
-		return {
-			...block,
-			attributes: getBlockAttributes( state, clientId ),
-			innerBlocks: areInnerBlocksControlled( state, clientId )
-				? EMPTY_ARRAY
-				: getBlocks( state, clientId, false ),
-		};
-	},
-	( state, clientId ) => [
-		state.blocks.controlledInnerBlocks[ clientId ]
-			? getBlockAttributes( clientId )
-			: state.blocks.cache[ clientId ],
-	]
-);
-
 export const __unstableGetBlockWithoutInnerBlocks = createSelector(
 	( state, clientId ) => {
 		const block = state.blocks.byClientId[ clientId ];
@@ -223,11 +201,9 @@ export const __unstableGetBlockWithoutInnerBlocks = createSelector(
  * @return {Object[]} Post blocks.
  */
 export const getBlocks = createSelector(
-	( state, rootClientId, withControlledInnerBlocks = true ) => {
+	( state, rootClientId ) => {
 		return map( getBlockOrder( state, rootClientId ), ( clientId ) =>
-			withControlledInnerBlocks
-				? getBlock( state, clientId )
-				: getBlockWithoutControlledInnerBlocks( state, clientId )
+			getBlock( state, clientId )
 		);
 	},
 	( state ) => [
