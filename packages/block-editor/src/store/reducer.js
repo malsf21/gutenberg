@@ -412,18 +412,22 @@ function withPersistentBlockChange( reducer ) {
 
 		/**
 		 * Determine the closest rootClientId of a change if the action includes
-		 * a rootClientId.
-		 *
-		 * @todo @noahtallen should we change this to check the clientId first?
-		 * If so, we could remove the rootClient logic on an action-level.
+		 * a rootClientId. If we mark the previous change as persistent, we need
+		 * to use the cliencId provided in the previous action since the current
+		 * action wont include one.
 		 */
-		if ( nextState.isPersistentChange && action.rootClientId ) {
-			const clientId = action.rootClientId;
+		const presistenceClientId =
+			action.type === 'MARK_LAST_CHANGE_AS_PERSISTENT'
+				? lastAction.rootClientId
+				: action.rootClientId;
+
+		if ( nextState.isPersistentChange && presistenceClientId ) {
 			const rootController = getInnerBlockController(
-				{ blocks: nextState },
-				clientId
+				{ blocks: nextState }, // Selector expects the overall block-editor state format.
+				presistenceClientId
 			);
-			// If no rootController is found, it will be set to undefined, which is expected.
+			// If no rootController is found, it will be set to undefined, which
+			// indicates that the persistent change applies to the root entity.
 			nextState.persistentChangeRootClientId = rootController;
 		}
 
