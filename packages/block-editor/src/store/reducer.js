@@ -425,8 +425,6 @@ function withPersistentBlockChange( reducer ) {
 			);
 			// If no rootController is found, it will be set to undefined, which is expected.
 			nextState.persistentChangeRootClientId = rootController;
-		} else {
-			nextState.persistentChangeRootClientId = undefined;
 		}
 
 		// In comparing against the previous action, consider only those which
